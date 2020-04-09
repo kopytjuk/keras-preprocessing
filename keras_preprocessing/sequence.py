@@ -7,6 +7,7 @@ from __future__ import print_function
 
 import numpy as np
 import random
+import math
 import json
 from six.moves import range
 import six
@@ -294,6 +295,9 @@ class TimeseriesGenerator(object):
             in reverse chronological order.
         batch_size: Number of timeseries samples in each batch
             (except maybe the last one).
+        return_sequences: Boolean: if `true`, the target array will have same
+            length as samples. This is useful for "many-to-many" architectures.
+            `start_index` and `end_index` will be ignored.
 
     # Returns
         A [Sequence](/utils/#sequence) instance.
@@ -329,7 +333,8 @@ class TimeseriesGenerator(object):
                  end_index=None,
                  shuffle=False,
                  reverse=False,
-                 batch_size=128):
+                 batch_size=128,
+                 return_sequences=False):
 
         if len(data) != len(targets):
             raise ValueError('Data and targets have to be' +
@@ -349,6 +354,7 @@ class TimeseriesGenerator(object):
         self.shuffle = shuffle
         self.reverse = reverse
         self.batch_size = batch_size
+        self.return_sequences = return_sequences
 
         if self.start_index > self.end_index:
             raise ValueError('`start_index+length=%i > end_index=%i` '
@@ -357,7 +363,11 @@ class TimeseriesGenerator(object):
                              % (self.start_index, self.end_index))
 
     def __len__(self):
-        return (self.end_index - self.start_index +
+        if self.return_sequences:
+            n_samples = (1 + (len(self.data)-self.length)//self.stride)
+            return math.ceil(n_samples/self.batch_size)
+        else:
+            return (self.end_index - self.start_index +
                 self.batch_size * self.stride) // (self.batch_size * self.stride)
 
     def __getitem__(self, index):
@@ -371,7 +381,12 @@ class TimeseriesGenerator(object):
 
         samples = np.array([self.data[row - self.length:row:self.sampling_rate]
                             for row in rows])
-        targets = np.array([self.targets[row] for row in rows])
+
+        if self.return_sequences:
+            targets = np.array([self.targets[row - self.length:row:self.sampling_rate]
+                            for row in rows])
+        else:
+            targets = np.array([self.targets[row] for row in rows])
 
         if self.reverse:
             return samples[:, ::-1, ...], targets
@@ -409,7 +424,8 @@ class TimeseriesGenerator(object):
             'end_index': self.end_index,
             'shuffle': self.shuffle,
             'reverse': self.reverse,
-            'batch_size': self.batch_size
+            'batch_size': self.batch_size,
+            'return_sequences': self.return_sequences
         }
 
     def to_json(self, **kwargs):

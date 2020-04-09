@@ -136,6 +136,7 @@ def test_TimeseriesGenerator_serde():
     assert data_gen.shuffle == recovered_gen.shuffle
     assert data_gen.start_index == data_gen.start_index
     assert data_gen.stride == data_gen.stride
+    assert data_gen.return_sequences == data_gen.return_sequences
 
     assert (data_gen.data == recovered_gen.data).all()
     assert (data_gen.targets == recovered_gen.targets).all()
@@ -212,6 +213,23 @@ def test_TimeseriesGenerator():
                                   [[11], [13], [15], [17], [19]]])))
     assert (np.allclose(data_gen[0][1],
                         np.array([[20], [21]])))
+
+    data_gen = sequence.TimeseriesGenerator(data, targets,
+                                            length=10,
+                                            sampling_rate=1,
+                                            stride=10,
+                                            batch_size=2,
+                                            return_sequences=True)
+    assert len(data_gen) == 3
+    assert (np.allclose(data_gen[0][0],
+                        np.array([[[0], [1], [2], [3], [4], [5], [6], [7], [8], [9]],
+                                  [[10], [11], [12], [13], [14], [15], [16], 
+                                  [17], [18], [19]]])))
+    assert (np.allclose(data_gen[0][1],
+                        np.array([[[0], [1], [2], [3], [4], [5], [6], [7], [8], [9]],
+                                  [[10], [11], [12], [13], [14], [15], [16], [17], [18], [19]]
+                                  ])))
+
 
     data = np.array([np.random.random_sample((1, 2, 3, 4)) for i in range(50)])
     targets = np.array([np.random.random_sample((3, 2, 1)) for i in range(50)])
